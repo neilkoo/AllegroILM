@@ -1,0 +1,430 @@
+create or replace PACKAGE ALLEGRO_ILM_ARCHIVE AS
+
+
+  -- for remote call
+  PROCEDURE  DO_ARCH(
+    I_TARGET_NAME             IN  VARCHAR2,
+    I_FILTER_COLUMN           IN  VARCHAR2,
+    I_FILTER_VALUATION        IN  VARCHAR2,
+    I_FILTER_DATE             IN  DATE,
+    I_REQUEST_ID              IN  NUMBER
+  );
+
+  PROCEDURE  DO_PURG(
+    I_TARGET_NAME             IN  VARCHAR2,
+    I_FILTER_COLUMN           IN  VARCHAR2,
+    I_FILTER_VALUATION        IN  VARCHAR2,
+    I_FILTER_DATE             IN  DATE,
+    I_REQUEST_ID              IN  NUMBER
+  );
+
+  PROCEDURE  DO_RSTR(
+    I_TARGET_NAME             IN  VARCHAR2,
+    I_FILTER_COLUMN           IN  VARCHAR2,
+    I_FILTER_VALUATION        IN  VARCHAR2,
+    I_FILTER_DATE             IN  DATE,
+    I_REQUEST_ID              IN  NUMBER
+  );
+
+
+  -- for local call
+
+
+  PROCEDURE  DO_ARCH(
+    I_TARGET_NAME             IN  VARCHAR2,
+    I_FILTER_COLUMN           IN  VARCHAR2,
+    I_FILTER_VALUATION        IN  VARCHAR2,
+    I_FILTER_DATE             IN  DATE,
+    O_RET_CODE                OUT VARCHAR2,
+    O_RET_MESSAGE             OUT VARCHAR2
+  );
+
+  PROCEDURE  DO_PURG(
+    I_TARGET_NAME             IN  VARCHAR2,
+    I_FILTER_COLUMN           IN  VARCHAR2,
+    I_FILTER_VALUATION        IN  VARCHAR2,
+    I_FILTER_DATE             IN  DATE,
+    O_RET_CODE                OUT VARCHAR2,
+    O_RET_MESSAGE             OUT VARCHAR2
+  );
+
+  PROCEDURE  DO_RSTR(
+    I_TARGET_NAME             IN  VARCHAR2,
+    I_FILTER_COLUMN           IN  VARCHAR2,
+    I_FILTER_VALUATION        IN  VARCHAR2,
+    I_FILTER_DATE             IN  DATE,
+    O_RET_CODE                OUT VARCHAR2,
+    O_RET_MESSAGE             OUT VARCHAR2
+  );
+
+  C_SUCCESS                 CONSTANT VARCHAR2(10) :=  'SUCCESS';
+  C_FAILURE                 CONSTANT VARCHAR2(10) :=  'FAILURE';
+  C_PENDING                 CONSTANT VARCHAR2(10) :=  'PENDING';
+
+END ALLEGRO_ILM_ARCHIVE;
+/
+
+create or replace PACKAGE BODY ALLEGRO_ILM_ARCHIVE AS
+  PROCEDURE  DO_ARCH(
+    I_TARGET_NAME             IN  VARCHAR2,
+    I_FILTER_COLUMN           IN  VARCHAR2,
+    I_FILTER_VALUATION        IN  VARCHAR2,
+    I_FILTER_DATE             IN  DATE,
+    I_REQUEST_ID              IN  NUMBER
+  )
+  IS
+    V_RET_CODE               VARCHAR2(100);
+    V_RET_MESSAGE            VARCHAR2(4000);
+  BEGIN
+    DO_ARCH(
+      I_TARGET_NAME             => I_TARGET_NAME     ,
+      I_FILTER_COLUMN           => I_FILTER_COLUMN   ,
+      I_FILTER_VALUATION        => I_FILTER_VALUATION,
+      I_FILTER_DATE             => I_FILTER_DATE     ,
+      O_RET_CODE                => V_RET_CODE        ,
+      O_RET_MESSAGE             => V_RET_MESSAGE
+    );
+    INSERT INTO ILM_ARCHIVE_REQ_STATUS
+    VALUES ( I_REQUEST_ID, V_RET_CODE, V_RET_MESSAGE);
+
+    COMMIT;
+  END DO_ARCH;
+
+  PROCEDURE  DO_PURG(
+    I_TARGET_NAME             IN  VARCHAR2,
+    I_FILTER_COLUMN           IN  VARCHAR2,
+    I_FILTER_VALUATION        IN  VARCHAR2,
+    I_FILTER_DATE             IN  DATE,
+    I_REQUEST_ID              IN  NUMBER
+  )
+  IS
+    V_RET_CODE               VARCHAR2(100);
+    V_RET_MESSAGE            VARCHAR2(4000);
+  BEGIN
+    DO_PURG(
+      I_TARGET_NAME             => I_TARGET_NAME     ,
+      I_FILTER_COLUMN           => I_FILTER_COLUMN   ,
+      I_FILTER_VALUATION        => I_FILTER_VALUATION,
+      I_FILTER_DATE             => I_FILTER_DATE     ,
+      O_RET_CODE                => V_RET_CODE        ,
+      O_RET_MESSAGE             => V_RET_MESSAGE
+    );
+    INSERT INTO ILM_ARCHIVE_REQ_STATUS
+    VALUES ( I_REQUEST_ID, V_RET_CODE, V_RET_MESSAGE);
+    COMMIT;
+
+  END DO_PURG;
+
+  PROCEDURE  DO_RSTR(
+    I_TARGET_NAME             IN  VARCHAR2,
+    I_FILTER_COLUMN           IN  VARCHAR2,
+    I_FILTER_VALUATION        IN  VARCHAR2,
+    I_FILTER_DATE             IN  DATE,
+    I_REQUEST_ID              IN  NUMBER
+  )
+  IS
+    V_RET_CODE               VARCHAR2(100);
+    V_RET_MESSAGE            VARCHAR2(4000);
+  BEGIN
+    DO_RSTR(
+      I_TARGET_NAME             => I_TARGET_NAME     ,
+      I_FILTER_COLUMN           => I_FILTER_COLUMN   ,
+      I_FILTER_VALUATION        => I_FILTER_VALUATION,
+      I_FILTER_DATE             => I_FILTER_DATE     ,
+      O_RET_CODE                => V_RET_CODE        ,
+      O_RET_MESSAGE             => V_RET_MESSAGE
+    );
+    INSERT INTO ILM_ARCHIVE_REQ_STATUS
+    VALUES ( I_REQUEST_ID, V_RET_CODE, V_RET_MESSAGE);
+    COMMIT;
+
+  END DO_RSTR;
+
+  PROCEDURE  DO_ARCH(
+    I_TARGET_NAME             IN  VARCHAR2,
+    I_FILTER_COLUMN           IN  VARCHAR2,
+    I_FILTER_VALUATION        IN  VARCHAR2,
+    I_FILTER_DATE             IN  DATE,
+    O_RET_CODE                OUT VARCHAR2,
+    O_RET_MESSAGE             OUT VARCHAR2
+  )
+  AS
+    V_WHO_AM_I       VARCHAR2(100);
+    V_PARTITION_NAME VARCHAR2(40);
+    V_PARTITION_CNT  NUMBER;
+
+    V_SQL            VARCHAR2(4000);
+
+    V_VS_ALG_REC_CNT        NUMBER;
+    V_VS_ARC_REC_CNT        NUMBER;
+
+    V_VD_ALG_REC_CNT        NUMBER;
+    V_VD_ARC_REC_CNT        NUMBER;
+
+    V_ALG_REC_CNT        NUMBER;
+    V_ARC_REC_CNT        NUMBER;
+
+  BEGIN
+
+    -- PREPARE PARTITION
+    IF ( I_TARGET_NAME = 'VALUATION' ) THEN
+      V_PARTITION_NAME := 'P_'|| I_FILTER_VALUATION;
+
+      -- CHECK PARTITION EXISTS IN VD
+      SELECT COUNT(*)
+        INTO V_PARTITION_CNT
+        FROM USER_TAB_PARTITIONS
+       WHERE TABLE_NAME = 'VALUATIONDETAIL'
+         AND PARTITION_NAME = V_PARTITION_NAME;
+
+      -- if the partition does not exist, then create
+      IF ( V_PARTITION_CNT = 0 ) THEN
+        BEGIN
+          EXECUTE IMMEDIATE 'ALTER TABLE VALUATIONDETAIL '||
+                            ' ADD PARTITION '|| V_PARTITION_NAME ||
+                            ' VALUES('''|| I_FILTER_VALUATION ||''')';
+        EXCEPTION
+          WHEN OTHERS THEN
+            O_RET_CODE    := C_FAILURE;
+            O_RET_MESSAGE := 'FAILED TO ADD PARTITION FOR VD TABLE, PARTITION NAME:'|| V_PARTITION_NAME;
+            RETURN;
+        END;
+      END IF;
+    END IF;
+
+    -- FOR VALUATION ARCHIVE:
+    IF ( I_TARGET_NAME = 'VALUATION' ) THEN
+      --VALUATIONSUMMARY
+      SELECT COUNT(*) INTO V_VS_ARC_REC_CNT FROM         VALUATIONSUMMARY WHERE VALUATION = I_FILTER_VALUATION;
+      SELECT COUNT(*) INTO V_VS_ALG_REC_CNT FROM ALLEGRO.VALUATIONSUMMARY WHERE VALUATION = I_FILTER_VALUATION;
+
+      CASE
+        WHEN  ( V_VS_ARC_REC_CNT = 0 AND V_VS_ALG_REC_CNT = 0 )   -- NO DATA
+        THEN BEGIN
+               O_RET_CODE    := C_SUCCESS;
+               O_RET_MESSAGE := 'VS NO DATA.';
+             END;
+        WHEN  ( V_VS_ARC_REC_CNT > 0 AND V_VS_ALG_REC_CNT = 0 )   -- ALREADY ARCHIVED
+        THEN BEGIN
+               O_RET_CODE    := C_SUCCESS;
+               O_RET_MESSAGE := 'VS ALREADY ARCHIVED.';
+             END;
+        WHEN  ( V_VS_ARC_REC_CNT = 0 AND V_VS_ALG_REC_CNT > 0 )   -- NORMAL PROCESSING
+        THEN BEGIN
+               INSERT INTO VALUATIONSUMMARY
+               SELECT * FROM ALLEGRO.VALUATIONSUMMARY WHERE VALUATION = I_FILTER_VALUATION;
+
+               O_RET_CODE    := C_SUCCESS;
+               O_RET_MESSAGE := 'NORMAL PROCESSING.';
+               COMMIT;
+             EXCEPTION
+               WHEN OTHERS THEN
+                 O_RET_CODE    := C_FAILURE;
+                 O_RET_MESSAGE := 'Experience failure when archiving VS data, error message:'||SUBSTR(SQLERRM, 1, 100);
+             END;
+        WHEN  ( V_VS_ARC_REC_CNT > 0 AND V_VS_ALG_REC_CNT > 0 )   -- ABNORMAL SCENARIO, REPORT ERROR!
+        THEN BEGIN
+               O_RET_CODE    := C_FAILURE;
+               O_RET_MESSAGE := 'VS HAS DATA IN BOTH ALG AND ARCH. ERROR!';
+             END;
+      END CASE;
+
+
+      --VALUATIONDETAIL
+      IF (O_RET_CODE = C_SUCCESS) THEN
+        SELECT COUNT(*) INTO V_VD_ARC_REC_CNT FROM         VALUATIONDETAIL WHERE VALUATION = I_FILTER_VALUATION;
+        SELECT COUNT(*) INTO V_VD_ALG_REC_CNT FROM ALLEGRO.VALUATIONDETAIL WHERE VALUATION = I_FILTER_VALUATION;
+        CASE
+          WHEN  ( V_VD_ARC_REC_CNT = 0 AND V_VD_ALG_REC_CNT = 0 )   -- NO DATA
+          THEN BEGIN
+                 O_RET_CODE    := C_SUCCESS;
+                 O_RET_MESSAGE := 'VD NO DATA.';
+               END;
+          WHEN  ( V_VD_ARC_REC_CNT > 0 AND V_VD_ALG_REC_CNT = 0 )   -- ALREADY ARCHIVED
+          THEN BEGIN
+                 O_RET_CODE    := C_SUCCESS;
+                 O_RET_MESSAGE := 'VD ALREADY ARCHIVED.';
+               END;
+          WHEN  ( V_VD_ARC_REC_CNT = 0 AND V_VD_ALG_REC_CNT > 0 )   -- NORMAL PROCESSING
+          THEN BEGIN
+                 INSERT /*+ APPEND */ INTO VALUATIONDETAIL
+                 SELECT * FROM ALLEGRO.VALUATIONDETAIL WHERE VALUATION = I_FILTER_VALUATION;
+                 O_RET_CODE    := C_SUCCESS;
+                 O_RET_MESSAGE := 'NORMAL PROCESSING.';
+                 COMMIT;
+               EXCEPTION
+                 WHEN OTHERS THEN
+                   O_RET_CODE    := C_FAILURE;
+                   O_RET_MESSAGE := 'Experience failure when archiving VD data, error message:'||SUBSTR(SQLERRM, 1, 100);
+               END;
+          WHEN  ( V_VD_ARC_REC_CNT > 0 AND V_VD_ALG_REC_CNT > 0 )   -- ABNORMAL SCENARIO, REPORT ERROR!
+          THEN BEGIN
+                 O_RET_CODE    := C_FAILURE;
+                 O_RET_MESSAGE := 'VD HAS DATA IN BOTH ALG AND ARCH. ERROR!';
+               END;
+        END CASE;
+      END IF;
+
+    -- FOR ALL OTHER TABLES
+    ELSE
+      V_SQL := 'SELECT COUNT(*) '||
+               '  FROM '|| I_TARGET_NAME   ||
+               ' WHERE '|| I_FILTER_COLUMN ||' >= TO_DATE('''||TO_CHAR(I_FILTER_DATE,'YYYY-MM-DD') ||''',''YYYY-MM-DD'')'||
+               '   AND '|| I_FILTER_COLUMN ||' <  TO_DATE('''||TO_CHAR(I_FILTER_DATE,'YYYY-MM-DD') ||''',''YYYY-MM-DD'')+1';
+      BEGIN
+        EXECUTE IMMEDIATE V_SQL INTO V_ARC_REC_CNT;
+        O_RET_CODE    := C_SUCCESS;
+        O_RET_MESSAGE := 'NORMAL PROCESSING.';
+      EXCEPTION
+        WHEN OTHERS THEN
+          O_RET_CODE    := C_FAILURE;
+          O_RET_MESSAGE := 'Failed to get # of rows from target table in archive, error msg:' ||SUBSTR(SQLERRM, 1, 100);
+      END;
+
+      IF ( O_RET_CODE = C_SUCCESS) THEN
+        BEGIN
+          V_SQL := 'SELECT COUNT(*) '||
+                   '  FROM ALLEGRO.'|| I_TARGET_NAME   ||
+                   ' WHERE '|| I_FILTER_COLUMN ||' >= TO_DATE('''||TO_CHAR(I_FILTER_DATE,'YYYY-MM-DD') ||''',''YYYY-MM-DD'')'||
+                   '   AND '|| I_FILTER_COLUMN ||' <  TO_DATE('''||TO_CHAR(I_FILTER_DATE,'YYYY-MM-DD') ||''',''YYYY-MM-DD'')+1';
+          EXECUTE IMMEDIATE V_SQL INTO V_ALG_REC_CNT;
+          O_RET_CODE    := C_SUCCESS;
+          O_RET_MESSAGE := 'NORMAL PROCESSING.';
+
+        EXCEPTION
+          WHEN OTHERS THEN
+            O_RET_CODE    := C_FAILURE;
+            O_RET_MESSAGE := 'Failed to get # of rows from target table in ALLEGRO SCHEMA, error msg:' ||SUBSTR(SQLERRM, 1, 100);
+        END;
+      END IF;
+
+      IF ( O_RET_CODE = C_SUCCESS) THEN
+        CASE
+          WHEN  ( V_ARC_REC_CNT = 0 AND V_ALG_REC_CNT = 0 )   -- NO DATA
+          THEN BEGIN
+                 O_RET_CODE    := C_SUCCESS;
+                 O_RET_MESSAGE := 'NO DATA.';
+               END;
+          WHEN  ( V_ARC_REC_CNT > 0 AND V_ALG_REC_CNT = 0 )   -- ALREADY ARCHIVED
+          THEN BEGIN
+                 O_RET_CODE    := C_SUCCESS;
+                 O_RET_MESSAGE := 'ALREADY ARCHIVED.';
+               END;
+          WHEN  ( V_ARC_REC_CNT = 0 AND V_ALG_REC_CNT > 0 )   -- NORMAL PROCESSING
+          THEN BEGIN
+                 V_SQL := ' INSERT  INTO           '|| I_TARGET_NAME ||
+                          ' SELECT * FROM ALLEGRO.'|| I_TARGET_NAME ||
+                          '  WHERE '|| I_FILTER_COLUMN ||' >= TO_DATE('''||TO_CHAR(I_FILTER_DATE,'YYYY-MM-DD') ||''',''YYYY-MM-DD'')'||
+                          '    AND '|| I_FILTER_COLUMN ||' <  TO_DATE('''||TO_CHAR(I_FILTER_DATE,'YYYY-MM-DD') ||''',''YYYY-MM-DD'')+1';
+                 EXECUTE IMMEDIATE V_SQL;
+                 COMMIT;
+                 O_RET_CODE    := C_SUCCESS;
+                 O_RET_MESSAGE := 'NORMAL PROCESSING.';
+                 COMMIT;
+               EXCEPTION
+                 WHEN OTHERS THEN
+                   O_RET_CODE    := C_FAILURE;
+                   O_RET_MESSAGE := 'Experience failure when archiving data, error message:'||SUBSTR(SQLERRM, 1, 100);
+               END;
+          WHEN  ( V_ARC_REC_CNT > 0 AND V_ALG_REC_CNT > 0 )   -- ABNORMAL SCENARIO, REPORT ERROR!
+          THEN BEGIN
+                 O_RET_CODE    := C_FAILURE;
+                 O_RET_MESSAGE := 'TARGET HAS DATA IN BOTH ALG AND ARCH. ERROR!';
+               END;
+        END CASE;
+      END IF;
+
+    END IF;
+  END DO_ARCH;
+
+
+  PROCEDURE  DO_PURG(
+    I_TARGET_NAME             IN  VARCHAR2,
+    I_FILTER_COLUMN           IN  VARCHAR2,
+    I_FILTER_VALUATION        IN  VARCHAR2,
+    I_FILTER_DATE             IN  DATE,
+    O_RET_CODE                OUT VARCHAR2,
+    O_RET_MESSAGE             OUT VARCHAR2
+  )
+  IS
+    V_PARTITION_NAME VARCHAR2(40);
+    V_PARTITION_CNT  NUMBER;
+    V_SQL            VARCHAR2(4000);
+  BEGIN
+    O_RET_CODE := C_SUCCESS;
+    IF ( I_TARGET_NAME = 'VALUATION' ) THEN
+      V_PARTITION_NAME := 'P_'|| I_FILTER_VALUATION;
+
+      -- CHECK PARTITION EXISTS IN VD
+      SELECT COUNT(*)
+        INTO V_PARTITION_CNT
+        FROM USER_TAB_PARTITIONS
+       WHERE TABLE_NAME = 'VALUATIONDETAIL'
+         AND PARTITION_NAME = V_PARTITION_NAME;
+
+      -- if the partition does not exist, then ignore
+      IF ( V_PARTITION_CNT != 0 ) THEN
+        BEGIN
+          EXECUTE IMMEDIATE 'ALTER TABLE VALUATIONDETAIL DROP PARTITION '|| V_PARTITION_NAME;
+          O_RET_CODE    := C_SUCCESS;
+          O_RET_MESSAGE := 'DELETED FROM VD.';
+        EXCEPTION
+          WHEN OTHERS THEN
+            O_RET_CODE    := C_FAILURE;
+            O_RET_MESSAGE := 'FAILED TO DROP PARTITION FOR VD TABLE, PARTITION NAME:'|| V_PARTITION_NAME;
+        END;
+      END IF;
+
+      --Delete from valuationsummary
+	  BEGIN
+	    DELETE FROM VALUATIONSUMMARY WHERE VALUATION=I_FILTER_VALUATION;
+	    COMMIT;
+        O_RET_CODE    := C_SUCCESS;
+        O_RET_MESSAGE := O_RET_MESSAGE || ' DELETED FROM VS.';
+	  EXCEPTION
+	    WHEN OTHERS THEN
+          O_RET_CODE    := C_FAILURE;
+          O_RET_MESSAGE := 'Failed to purge data from valuationsummary table';
+	  END;
+
+    ELSE  -- IF NOT VALUATION
+      BEGIN
+        V_SQL := 'DELETE FROM '|| I_TARGET_NAME   ||
+                 ' WHERE '|| I_FILTER_COLUMN ||' >= TO_DATE('''||TO_CHAR(I_FILTER_DATE,'YYYY-MM-DD') ||''',''YYYY-MM-DD'')'||
+                 '   AND '|| I_FILTER_COLUMN ||' <  TO_DATE('''||TO_CHAR(I_FILTER_DATE,'YYYY-MM-DD') ||''',''YYYY-MM-DD'')+1';
+        EXECUTE IMMEDIATE V_SQL;
+        COMMIT;
+        O_RET_CODE    := C_SUCCESS;
+        O_RET_MESSAGE := 'SUCCESSFULLY PURGED.';
+        COMMIT;
+      EXCEPTION
+        WHEN OTHERS THEN
+          O_RET_CODE    := C_FAILURE;
+          O_RET_MESSAGE := 'Experience failure when deleting data, error message:'||SUBSTR(SQLERRM, 1, 100);
+      END;
+    END IF;
+
+  END DO_PURG;
+
+  PROCEDURE  DO_RSTR(
+    I_TARGET_NAME             IN  VARCHAR2,
+    I_FILTER_COLUMN           IN  VARCHAR2,
+    I_FILTER_VALUATION        IN  VARCHAR2,
+    I_FILTER_DATE             IN  DATE,
+    O_RET_CODE                OUT VARCHAR2,
+    O_RET_MESSAGE             OUT VARCHAR2
+  )
+  IS
+  BEGIN
+    DO_PURG(
+        I_TARGET_NAME      => I_TARGET_NAME      ,
+        I_FILTER_COLUMN    => I_FILTER_COLUMN    ,
+        I_FILTER_VALUATION => I_FILTER_VALUATION ,
+        I_FILTER_DATE      => I_FILTER_DATE      ,
+        O_RET_CODE         => O_RET_CODE         ,
+        O_RET_MESSAGE      => O_RET_MESSAGE
+      );
+  END DO_RSTR;
+
+END ALLEGRO_ILM_ARCHIVE;
+/
